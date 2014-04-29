@@ -2,7 +2,7 @@
 
 import ctypes
 
-class scsipt:
+class ScsiPT:
     
     sg = ctypes.CDLL("libsgutils2.so")
     sg.scsi_pt_version              .restype = ctypes.c_char_p
@@ -87,38 +87,182 @@ class scsipt:
         self.file = self.sg.scsi_pt_open_device(filename, 0, 0)
         if self.file < 0:
             raise Exception(self.file)
-        self.objp = self.sg.construct_scsi_pt_obj()
-        if self.objp == None:
-            raise Exception()
 
     def __del__(self):
-        if self.objp != None:
-            self.sg.destruct_scsi_pt_obj(self.objp)
-            self.objp = None
         retval = self.sg.scsi_pt_close_device(self.file)
         if retval < 0:
             raise Exception(retval)
 
+    def sendcdb(self, cdb):
+        return self.sg.do_scsi_pt(cdb.objp, self.file, 20, 1)
+
+
+class CDB:
+    """
+    Manage the data structure that holds a passthrough request.
+    """
+    
+    def __init__(self, cdb, rs_size=24):
+        # Construct CDB object for a passthrough request.
+        self.objp = ScsiPT.sg.construct_scsi_pt_obj()
+        if self.objp == None:
+            raise Exception()
+        # Add CDB to the object.
+        self.cdb = ctypes.create_string_buffer(str(bytearray(cdb)), len(cdb))
+        ScsiPT.sg.set_scsi_pt_cdb(self.objp, self.cdb, len(self.cdb))
+        # Add Request Sense buffer to object.
+        self.sense = ctypes.create_string_buffer(rs_size)
+        ScsiPT.sg.set_scsi_pt_sense(self.objp, self.sense, len(self.sense))
+        
+    def __del__(self):
+        # Destruct the object, if it exists.
+        if self.objp != None:
+            ScsiPT.sg.destruct_scsi_pt_obj(self.objp)
+            self.objp = None
+            
+    def set_data_out(self, buf):
+        self.buf = ctypes.create_string_buffer(str(bytearray(buf)), len(buf))
+        retval = ScsiPT.sg.set_scsi_pt_data_out(self.objp, self.buf, len(self.buf))
+        if retval < 0:
+            raise Exception(retval)
+
+    def set_data_in(self, buflen):
+        self.buf = ctypes.create_string_buffer(buflen)
+        retval = ScsiPT.sg.set_scsi_pt_data_in(self.objp, self.buf, len(self.buf))
+        if retval < 0:
+            raise Exception(retval)
+
+
+class Cmd:
+    """
+    Manage creating objects of type CDB and filling in parameters.
+    """
+    
+    abbrevs = \
+    {
+     "tur"  : "test_unit_ready",
+     "inq"  : "inquiry",
+     
+     "alloc": "allocation_length",
+     }
+
+    # indices into cdbdefs values
+    xCDBNUM = 0
+    xLEN    = 1
+    xDIR    = 2
+    xDESC   = 3
+    # directions (xDIR)
+    NONE = "NONE"
+    OUT  = "OUT"
+    IN   = "IN"
+    # definitions of CDBs
+    cdbdefs = \
+    {
+     "test_unit_ready": (0x00, 6, NONE),
+     "inquiry"        : (0x12, 6, IN, {"evpd":((1,0),1,0), "allocation_length": (3, 16, 5)}),
+     }
+    
+    def __init__(self, cdbname, params={}):
+        # Replace a possible abbreviation.
+        if cdbname in self.abbrevs:
+            cdbname = self.abbrevs[cdbname]
+        # Ensure we know this command.
+        if cdbname not in self.cdbdefs:
+            raise Exception("bad CDB name")
+        d = self.cdbdefs[cdbname]  # shorthand
+        # Create initial CDB as all 0's.
+        self.cdb = [0] * d[self.xLEN]
+        # Fill in all the fields.
+        self.fill(self.cdb,
+                  {"opcode":(0,8,0)}.update(d[self.xDESC]),
+                  {"opcode":d[self.xCDBNUM]}.update(params))
+
+    def fill(self, cdb, defs, pparms):
+        """
+        Take field values in parms and insert them into cdb based on the field definitions in defs.
+        """
+        parms = {n:v[2] for (n,v) in defs.values()}  # Create parms for default field values.
+        parms.update(pparms)  # Insert real parameters.
+        for (name, value) in parms.values():
+            if name not in defs:
+                raise Exception("unknown field: "+name)
+            length = defs[name][2]
+            if value >= 1<<length:
+                raise Exception("value too large for field: "+name)
+            start = value[0]
+            if type(start) == type(0):  # must be either number of list of 2
+                start = (start,7)
+            startbitnum = start[0]*8 + (7-start[1])  # Number bits l-to-r.
+            bitnum = startbitnum + defs[name][1] - 1
+            while length > 0:
+                if bitnum % 8 == 7 and length >= 8:
+                    bitlen= 8
+                    cdb[bitnum//8] = value & 0xff;
+                else:
+                    startofbyte = bitnum // 8 * 8  # Find first bit num in byte.
+                    firstbit = max(startofbyte, bitnum-length+1)
+                    bitlen= bitnum-firstbit+1
+                    shift = (7 - bitnum%8)
+                    vmask = (1 << bitlen) - 1
+                    bmask = ~(vmask << shift)
+                    cdb[bitnum//8] &= bmask
+                    cdb[bitnum//8] |= (value & vmask) << shift
+                bitnum -= bitlen
+                value >>= bitlen
+                length -= bitlen
+        
+        
+def dumpbuf(buf):
+    """
+    Print a ctypes buffer as hexadecimal bytes.
+    This code is not pretty.
+    """
+    a = 0
+    adr = ''
+    hxd = ''
+    asc = ''
+    for i in buf.raw:
+        if a % 16 == 0:
+            adr = "%.4x" % a
+        hxd += " %.2x" % ord(i)
+        asc += i if (chr(32) <= i and i < chr(96)) else '.'
+        if (a+1) % 16 == 0:
+            print adr, "%-49s" % hxd, asc
+            adr = ''
+            hxd = ''
+            asc = ''
+        a += 1
+    if len(asc) != 0:
+        print adr, "%-49s" % hxd, asc 
+
 if __name__ == "__main__":
-    print "version:", scsipt.sg.scsi_pt_version()
-    #pt = scsipt("/dev/sdbn")
-    pt = scsipt("/dev/sdah")
+    print "version:", ScsiPT.sg.scsi_pt_version()
+    #pt = ScsiPT("/dev/sdbn")
+    pt = ScsiPT("/dev/sdah")
 
-    cdb_tur = ctypes.create_string_buffer(str(bytearray([0,0,0,0,0,0])),6)
-    print "cdb_tur =", cdb_tur, "type =", type(cdb_tur), "len =", len(cdb_tur)
-    scsipt.sg.set_scsi_pt_cdb(pt.objp, cdb_tur, len(cdb_tur))
+    cdb_tur = CDB([0,0,0,0,0,0])
 
-    sense = ctypes.create_string_buffer(255)
-    print "sense =", sense, "type =", type(sense), "len =", len(sense)
-    scsipt.sg.set_scsi_pt_sense(pt.objp, sense, len(sense))
-
-    print "objp =", pt.objp
-    print "file =", pt.file
-    retval = scsipt.sg.do_scsi_pt(pt.objp, pt.file, 20, 1)
+    retval = pt.sendcdb(cdb_tur)
     print "retval =", retval
 
-    for i in range(10):
-        print i, ord(sense.raw[i])
+    print "sense"
+    dumpbuf(cdb_tur.sense)
 
+    del cdb_tur
+    
+    alloc = 0xff
+    cdb_inq = CDB([0x12,0,0,0,alloc,0])
+    cdb_inq.set_data_in(alloc)
+    retval = pt.sendcdb(cdb_inq)
+    print "retval =", retval
+
+    print "sense"
+    dumpbuf(cdb_inq.sense)
+
+    print "inq"
+    dumpbuf(cdb_inq.buf)
+        
+    del cdb_inq
+    
     del pt
 
