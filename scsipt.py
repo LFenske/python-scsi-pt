@@ -150,7 +150,7 @@ class Cmd:
     xCDBNUM = 0
     xLEN    = 1
     xDIR    = 2
-    xDESC   = 3
+    xFLDS   = 3
     # directions (xDIR)
     NONE = "NONE"
     OUT  = "OUT"
@@ -158,9 +158,73 @@ class Cmd:
     # definitions of CDBs
     cdbdefs = \
     {
-     "test_unit_ready": (0x00, 6, NONE),
-     "inquiry"        : (0x12, 6, IN, {"evpd":((1,0),1,0), "allocation_length": (3, 16, 5)}),
+     "test_unit_ready": (0x00, 6, NONE, {}),
+     "inquiry"        : (0x12, 6, IN, {"evpd":((1,0),1,0), "page_code":(2,8,0), "allocation_length":(3,16,5)}),
      }
+    
+    data_inquiry = \
+    {
+     "peripheral qualifier"     : (( 0,7), 3),
+     "peripheral device type"   : (( 0,4), 5),
+     "rmb"                      : (( 1,0), 1),
+     "version"                  : (  2,    8),
+     "normaca"                  : (( 3,5), 1),
+     "hisup"                    : (( 3,4), 1),
+     "response data format"     : (( 3,3), 4),
+     "additional length"        : (  4,    8),
+     "sccs"                     : (( 5,7), 1),
+     "acc"                      : (( 5,6), 1),
+     "tpgs"                     : (( 5,5), 2),
+     "3pc"                      : (( 5,3), 1),
+     "protect"                  : (( 5,0), 1),
+     "encserv"                  : (( 6,6), 1),
+     "vs"                       : (( 6,5), 1),
+     "multip"                   : (( 6,4), 1),
+     "mchngr"                   : (( 6,3), 1),
+     "addr16"                   : (( 6,0), 1),
+     "wbus16"                   : (( 7,5), 1),
+     "sync"                     : (( 7,4), 1),
+     "cmdque"                   : (( 7,1), 1),
+     "vs"                       : (( 7,0), 1),
+     "t10 vendor identification": (  8,   64),
+     "product identification"   : ( 16,  128),
+     "product revision level"   : ( 32,   32),
+     "drive serial number"      : ( 36,   64),
+     "vendor unique"            : ( 44,   96),
+     "clocking"                 : ((56,3), 2),
+     "qas"                      : ((56,1), 1),
+     "ius"                      : ((56,0), 1),
+     "version descriptor 1"     : ( 58,   16),
+     "version descriptor 2"     : ( 60,   16),
+     "version descriptor 3"     : ( 62,   16),
+     "version descriptor 4"     : ( 64,   16),
+     "version descriptor 5"     : ( 66,   16),
+     "version descriptor 6"     : ( 68,   16),
+     "version descriptor 7"     : ( 70,   16),
+     "version descriptor 8"     : ( 72,   16),
+     }
+    peripheral_device_type = \
+    {
+        0x00: "Direct access block device",
+        0x01: "Sequential-access device",
+        0x02: "Printer device",
+        0x03: "Processor device",
+        0x04: "Write-once device",
+        0x05: "CD/DVD device",
+        0x06: "Scanner device",
+        0x07: "Optical memory device",
+        0x08: "Medium changer device",
+        0x09: "Communications device",
+        0x0c: "Storage array controller device",
+        0x0d: "Enclosure services device",
+        0x0e: "Simplified direct-access device",
+        0x0f: "Optical card reader/writer device",
+        0x10: "Bridge Controller Commands",
+        0x11: "Object-based Storage Device",
+        0x12: "Automation/Drive Interface",
+        0x1e: "Well known logical unit",
+        0x1f: "Unknown or no device type",
+        }
     
     def __init__(self, cdbname, params={}):
         # Replace a possible abbreviation.
@@ -173,23 +237,26 @@ class Cmd:
         # Create initial CDB as all 0's.
         self.cdb = [0] * d[self.xLEN]
         # Fill in all the fields.
-        self.fill(self.cdb,
-                  {"opcode":(0,8,0)}.update(d[self.xDESC]),
-                  {"opcode":d[self.xCDBNUM]}.update(params))
+        opdef = {"opcode":(0,8,0)}
+        opdef.update(d[self.xFLDS])
+        opprm = {"opcode":d[self.xCDBNUM]}
+        opprm.update({(self.abbrevs[k] if k in self.abbrevs else k):v for (k,v) in params.items()})
+        self.fill(self.cdb, opdef, opprm)
 
     def fill(self, cdb, defs, pparms):
         """
         Take field values in parms and insert them into cdb based on the field definitions in defs.
         """
-        parms = {n:v[2] for (n,v) in defs.values()}  # Create parms for default field values.
+        print "defs =", defs
+        parms = {n:v[2] for (n,v) in defs.items()}  # Create parms for default field values.
         parms.update(pparms)  # Insert real parameters.
-        for (name, value) in parms.values():
+        for (name, value) in parms.items():
             if name not in defs:
                 raise Exception("unknown field: "+name)
-            length = defs[name][2]
+            length = defs[name][1]
             if value >= 1<<length:
                 raise Exception("value too large for field: "+name)
-            start = value[0]
+            start = defs[name][0]
             if type(start) == type(0):  # must be either number of list of 2
                 start = (start,7)
             startbitnum = start[0]*8 + (7-start[1])  # Number bits l-to-r.
@@ -218,19 +285,15 @@ def dumpbuf(buf):
     This code is not pretty.
     """
     a = 0
-    adr = ''
-    hxd = ''
-    asc = ''
     for i in buf.raw:
         if a % 16 == 0:
             adr = "%.4x" % a
+            hxd = ''
+            asc = ''
         hxd += " %.2x" % ord(i)
         asc += i if (chr(32) <= i and i < chr(96)) else '.'
         if (a+1) % 16 == 0:
             print adr, "%-49s" % hxd, asc
-            adr = ''
-            hxd = ''
-            asc = ''
         a += 1
     if len(asc) != 0:
         print adr, "%-49s" % hxd, asc 
@@ -263,6 +326,17 @@ if __name__ == "__main__":
     dumpbuf(cdb_inq.buf)
         
     del cdb_inq
+    
+    cmd = Cmd("tur")
+    print cmd.cdb
+
+    cmd = Cmd("inq", {"evpd":0, "alloc":0xa4})
+    print cmd.cdb
+    cdb = CDB(cmd.cdb)
+    cdb.set_data_in(0xa4)
+    pt.sendcdb(cdb)
+    dumpbuf(cdb.buf)
+    del cdb
     
     del pt
 
