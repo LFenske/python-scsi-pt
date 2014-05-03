@@ -8,7 +8,7 @@ class ScsiPT:
     """
 
     sg = ctypes.CDLL("libsgutils2.so")
-
+    
     sg.scsi_pt_version              .restype = ctypes.c_char_p
     sg.scsi_pt_version              .argtypes = []
 
@@ -334,7 +334,7 @@ def dumpbuf(buf):
             hxd = ''
             asc = ''
         hxd += " %.2x" % ord(i)
-        asc += i if (chr(32) <= i and i < chr(96)) else '.'
+        asc += i if (32 <= ord(i) and ord(i) < 128) else '.'
         if (a+1) % 16 == 0:
             print adr, "%-49s" % hxd, asc
         a += 1
@@ -344,7 +344,7 @@ def dumpbuf(buf):
 if __name__ == "__main__":
     print "version:", ScsiPT.sg.scsi_pt_version()
     #pt = ScsiPT("/dev/sdbn")
-    pt = ScsiPT("/dev/sdah")
+    pt = ScsiPT("/dev/sda")
 
     cdb_tur = CDB([0,0,0,0,0,0])
 
