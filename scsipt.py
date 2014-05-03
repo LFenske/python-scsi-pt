@@ -3,85 +3,115 @@
 import ctypes
 
 class ScsiPT:
-    
+    """
+    static linkages to sgutils functions
+    """
+
     sg = ctypes.CDLL("libsgutils2.so")
+
     sg.scsi_pt_version              .restype = ctypes.c_char_p
     sg.scsi_pt_version              .argtypes = []
+
     sg.scsi_pt_open_device          .restype = ctypes.c_int
     sg.scsi_pt_open_device          .argtypes = [ctypes.c_char_p,
                                                ctypes.c_int,
                                                ctypes.c_int]
+
     sg.scsi_pt_open_flags           .restype = ctypes.c_int
     sg.scsi_pt_open_flags           .argtypes = [ctypes.c_char_p,
                                                ctypes.c_int,
                                                ctypes.c_int]
+
     sg.scsi_pt_close_device         .restype = ctypes.c_int
     sg.scsi_pt_close_device         .argtypes = [ctypes.c_int]
+
     sg.construct_scsi_pt_obj        .restype = ctypes.c_void_p
     sg.construct_scsi_pt_obj        .argtypes = []
+
     sg.clear_scsi_pt_obj            .restype = ctypes.c_int # void
     sg.clear_scsi_pt_obj            .argtypes = [ctypes.c_void_p]
+
     sg.set_scsi_pt_cdb              .restype = ctypes.c_int # void
     sg.set_scsi_pt_cdb              .argtypes = [ctypes.c_void_p,
                                                ctypes.c_char_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_sense            .restype = ctypes.c_int # void
     sg.set_scsi_pt_sense            .argtypes = [ctypes.c_void_p,
                                                ctypes.c_char_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_data_in          .restype = ctypes.c_int # void
     sg.set_scsi_pt_data_in          .argtypes = [ctypes.c_void_p,
                                                ctypes.c_char_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_data_out         .restype = ctypes.c_int # void
     sg.set_scsi_pt_data_out         .argtypes = [ctypes.c_void_p,
                                                ctypes.c_char_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_packet_id        .restype = ctypes.c_int # void
     sg.set_scsi_pt_packet_id        .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_tag              .restype = ctypes.c_int # void
     sg.set_scsi_pt_tag              .argtypes = [ctypes.c_void_p,
                                                ctypes.c_ulong]
+
     sg.set_scsi_pt_task_management  .restype = ctypes.c_int # void
     sg.set_scsi_pt_task_management  .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_task_attr        .restype = ctypes.c_int # void
     sg.set_scsi_pt_task_attr        .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int,
                                                ctypes.c_int]
+
     sg.set_scsi_pt_flags            .restype = ctypes.c_int # void
     sg.set_scsi_pt_flags            .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int]
+
     sg.do_scsi_pt                   .restype = ctypes.c_int
     sg.do_scsi_pt                   .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int,
                                                ctypes.c_int,
                                                ctypes.c_int]
+
     sg.get_scsi_pt_result_category  .restype = ctypes.c_int
     sg.get_scsi_pt_result_category  .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_resid            .restype = ctypes.c_int
     sg.get_scsi_pt_resid            .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_status_response  .restype = ctypes.c_int
     sg.get_scsi_pt_status_response  .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_sense_len        .restype = ctypes.c_int
     sg.get_scsi_pt_sense_len        .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_os_err           .restype = ctypes.c_int
     sg.get_scsi_pt_os_err           .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_os_err_str       .restype = ctypes.c_char_p
     sg.get_scsi_pt_os_err_str       .argtypes = [ctypes.c_void_p,
                                                ctypes.c_int,
                                                ctypes.c_char_p]
+
     sg.get_scsi_pt_transport_err    .restype = ctypes.c_int
     sg.get_scsi_pt_transport_err    .argtypes = [ctypes.c_void_p]
+
     sg.get_scsi_pt_transport_err_str.restype = ctypes.c_char_p
     sg.get_scsi_pt_transport_err_str.argtypes = [ctypes.c_void_p,
                                                ctypes.c_int,
                                                ctypes.c_char_p]
+
     sg.get_scsi_pt_duration_ms      .restype = ctypes.c_int
     sg.get_scsi_pt_duration_ms      .argtypes = [ctypes.c_void_p]
+
     sg.destruct_scsi_pt_obj         .restype = ctypes.c_int # void
     sg.destruct_scsi_pt_obj         .argtypes = [ctypes.c_void_p]
+
 
     def __init__(self, filename):
         self.file = self.sg.scsi_pt_open_device(filename, 0, 0)
@@ -122,13 +152,19 @@ class CDB:
             
     def set_data_out(self, buf):
         self.buf = ctypes.create_string_buffer(str(bytearray(buf)), len(buf))
-        retval = ScsiPT.sg.set_scsi_pt_data_out(self.objp, self.buf, len(self.buf))
+        retval = ScsiPT.sg.set_scsi_pt_data_out(
+            self.objp,
+            self.buf,
+            len(self.buf))
         if retval < 0:
             raise Exception(retval)
 
     def set_data_in(self, buflen):
         self.buf = ctypes.create_string_buffer(buflen)
-        retval = ScsiPT.sg.set_scsi_pt_data_in(self.objp, self.buf, len(self.buf))
+        retval = ScsiPT.sg.set_scsi_pt_data_in(
+            self.objp,
+            self.buf,
+            len(self.buf))
         if retval < 0:
             raise Exception(retval)
 
@@ -159,7 +195,10 @@ class Cmd:
     cdbdefs = \
     {
      "test_unit_ready": (0x00, 6, NONE, {}),
-     "inquiry"        : (0x12, 6, IN, {"evpd":((1,0),1,0), "page_code":(2,8,0), "allocation_length":(3,16,5)}),
+     "inquiry"        : (0x12, 6, IN, {
+                "evpd":((1,0),1,0),
+                "page_code":(2,8,0),
+                "allocation_length":(3,16,5)}),
      }
     
     data_inquiry = \
@@ -240,12 +279,16 @@ class Cmd:
         opdef = {"opcode":(0,8,0)}
         opdef.update(d[self.xFLDS])
         opprm = {"opcode":d[self.xCDBNUM]}
-        opprm.update({(self.abbrevs[k] if k in self.abbrevs else k):v for (k,v) in params.items()})
+        opprm.update(
+            {(self.abbrevs[k]
+              if k in self.abbrevs else k):v
+              for (k,v) in params.items()})
         self.fill(self.cdb, opdef, opprm)
 
     def fill(self, cdb, defs, pparms):
         """
-        Take field values in parms and insert them into cdb based on the field definitions in defs.
+        Take field values in parms and insert them into cdb based on
+        the field definitions in defs.
         """
         print "defs =", defs
         parms = {n:v[2] for (n,v) in defs.items()}  # Create parms for default field values.
