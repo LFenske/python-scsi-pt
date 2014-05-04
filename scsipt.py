@@ -7,8 +7,8 @@ class ScsiPT:
     static linkages to sgutils functions
     """
 
-    sg = ctypes.CDLL("libsgutils2.so")
-    
+    sg = ctypes.CDLL("libsgutils2.so.2")
+
     sg.scsi_pt_version              .restype = ctypes.c_char_p
     sg.scsi_pt_version              .argtypes = []
 
@@ -195,11 +195,13 @@ class Cmd:
     cdbdefs = \
     {
      "test_unit_ready": (0x00, 6, NONE, {}),
-     "inquiry"        : (0x12, 6, IN, {
-                "evpd":((1,0),1,0),
-                "page_code":(2,8,0),
-                "allocation_length":(3,16,5)}),
-     }
+     "inquiry"        : (0x12, 6, IN,
+                         {
+                          "evpd"             :((1,0),1,0),
+                          "page_code"        :( 2,   8,0),
+                          "allocation_length":( 3,  16,5),
+                         }),
+    }
     
     data_inquiry = \
     {
@@ -282,7 +284,7 @@ class Cmd:
         opprm.update(
             {(self.abbrevs[k]
               if k in self.abbrevs else k):v
-              for (k,v) in params.items()})
+                for (k,v) in params.items()})
         self.fill(self.cdb, opdef, opprm)
 
     def fill(self, cdb, defs, pparms):
