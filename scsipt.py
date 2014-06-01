@@ -200,8 +200,33 @@ class Cmd:
                           "evpd"             :((1,0),1,0),
                           "page_code"        :( 2,   8,0),
                           "allocation_length":( 3,  16,5),
-                         }),
+                          }),
+     "write_buffer"   : (0x3b,10, OUT,
+                         {
+                          "mode_specific"        :((1,7),3,0),
+                          "mode"                 :((1,4),5,0),
+                          "buffer_id"            :( 2,   8,0),
+                          "buffer_offset"        :( 3,  24,0),
+                          "parameter_list_length":( 6,  24,0),
+                          }),
     }
+    
+    def settime(self, year, day, hour, minute, second):
+        return Cmd("write_buffer", {
+                                    "mode":1,
+                                    "buffer_id":0,
+                                    "buffer_offset":0xc0000,
+                                    "parameter_list_length":8,
+                                    })
+    
+    data_settime = \
+    {
+     "year"  :(0,16,0),
+     "day"   :(2,16,0),
+     "hour"  :(5, 8,0),
+     "minute":(6, 8,0),
+     "second":(7, 8,0),
+     }
     
     data_inquiry = \
     {
@@ -302,10 +327,12 @@ class Cmd:
             if value >= 1<<length:
                 raise Exception("value too large for field: "+name)
             start = defs[name][0]
-            if type(start) == type(0):  # must be either number of list of 2
+            if type(start) == type(0):  # must be either number or list of 2
                 start = (start,7)
+            # TODO Check type of start.
             startbitnum = start[0]*8 + (7-start[1])  # Number bits l-to-r.
             bitnum = startbitnum + defs[name][1] - 1
+            # TODO Is value inserted backwards?
             while length > 0:
                 if bitnum % 8 == 7 and length >= 8:
                     bitlen= 8
