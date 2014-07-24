@@ -211,13 +211,20 @@ class Cmd:
                           }),
     }
     
-    def settime(self, year, day, hour, minute, second):
-        return Cmd("write_buffer", {
-                                    "mode":1,
-                                    "buffer_id":0,
-                                    "buffer_offset":0xc0000,
-                                    "parameter_list_length":8,
-                                    })
+    # factory to create a Cmd to set time on a Rockbox device
+    @classmethod
+    def settime(Cls, year, day, hour, minute, second):
+        cmd = Cls("write_buffer", {
+                                   "mode":1,
+                                   "buffer_id":0,
+                                   "buffer_offset":0xc0000,
+                                   "parameter_list_length":12,  # Why is this 12 when there are 8 bytes of data?
+                                   })
+        cmd.dat = [0] * 8
+        Cls.fill(cmd.dat,
+                  Cmd.data_settime,
+                  {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
+        return cmd
     
     data_settime = \
     {
@@ -310,9 +317,10 @@ class Cmd:
             {(self.abbrevs[k]
               if k in self.abbrevs else k):v
                 for (k,v) in params.items()})
-        self.fill(self.cdb, opdef, opprm)
+        Cmd.fill(self.cdb, opdef, opprm)
 
-    def fill(self, cdb, defs, pparms):
+    @staticmethod
+    def fill(cdb, defs, pparms):
         """
         Take field values in parms and insert them into cdb based on
         the field definitions in defs.
@@ -373,7 +381,7 @@ def dumpbuf(buf):
 if __name__ == "__main__":
     print "version:", ScsiPT.sg.scsi_pt_version()
     #pt = ScsiPT("/dev/sdbn")
-    pt = ScsiPT("/dev/sda")
+    pt = ScsiPT("/dev/sdb")
 
     cdb_tur = CDB([0,0,0,0,0,0])
 
@@ -409,6 +417,30 @@ if __name__ == "__main__":
     pt.sendcdb(cdb)
     dumpbuf(cdb.buf)
     del cdb
+    
+    # Set Rockbox time.
+    if True:
+        import subprocess
+        p = subprocess.Popen(["date","+%Y"], stdout=subprocess.PIPE).stdout
+        for line in p: year   = int(line)
+        p = subprocess.Popen(["date","+%j"], stdout=subprocess.PIPE).stdout
+        for line in p: day    = int(line)
+        p = subprocess.Popen(["date","+%k"], stdout=subprocess.PIPE).stdout
+        for line in p: hour   = int(line)
+        p = subprocess.Popen(["date","+%M"], stdout=subprocess.PIPE).stdout
+        for line in p: minute = int(line)
+        p = subprocess.Popen(["date","+%S"], stdout=subprocess.PIPE).stdout
+        for line in p: second = int(line)
+        
+        print year, day, hour, minute, second
+        cmd = Cmd.settime(year, day, hour, minute, second)
+        print cmd.cdb
+        print cmd.dat
+        cdb = CDB(cmd.cdb)
+        cdb.set_data_out(cmd.dat)
+        pt.sendcdb(cdb)
+        del cdb
+        del cmd
     
     del pt
 
