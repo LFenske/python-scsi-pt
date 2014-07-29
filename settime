@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+# Set time on a Rockbox SANSA FUZE.
+
+from ScsiPT import *
+from CDB    import *
+from Cmd    import *
+
+import subprocess
+
+pt = ScsiPT("/dev/disk/by-label/SANSA\\x20FUZE")
+
+p = subprocess.Popen(["date","+%s"], stdout=subprocess.PIPE).stdout
+for line in p: s      =     line
+p = subprocess.Popen(["date","-d@"+s,"+%Y"], stdout=subprocess.PIPE).stdout
+for line in p: year   = int(line)
+p = subprocess.Popen(["date","-d@"+s,"+%j"], stdout=subprocess.PIPE).stdout
+for line in p: day    = int(line)
+p = subprocess.Popen(["date","-d@"+s,"+%k"], stdout=subprocess.PIPE).stdout
+for line in p: hour   = int(line)
+p = subprocess.Popen(["date","-d@"+s,"+%M"], stdout=subprocess.PIPE).stdout
+for line in p: minute = int(line)
+p = subprocess.Popen(["date","-d@"+s,"+%S"], stdout=subprocess.PIPE).stdout
+for line in p: second = int(line)
+
+print year, day, hour, minute, second
+cmd = Cmd.settime(year, day, hour, minute, second)
+print cmd.cdb
+print cmd.dat
+cdb = CDB(cmd.cdb)
+cdb.set_data_out(cmd.dat)
+pt.sendcdb(cdb)
+del cdb
+del cmd
+del pt
