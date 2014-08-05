@@ -179,7 +179,7 @@ class Cmd:
         Take field values in parms and insert them into cdb based on
         the field definitions in defs.
         """
-        print "defs =", defs
+        #print "defs =", defs
         parms = {n:v[2] for (n,v) in defs.items()}  # Create parms for default field values.
         parms.update(pparms)  # Insert real parameters.
         for (name, value) in parms.items():

@@ -43,8 +43,7 @@ def dumpbuf(buf):
 
 if __name__ == "__main__":
     print "version:", ScsiPT.sg.scsi_pt_version()
-    #pt = ScsiPT("/dev/sdbn")
-    pt = ScsiPT("/dev/sda")
+    pt = ScsiPT("/dev/sg4")
 
     cdb_tur = CDB([0,0,0,0,0,0])
 
