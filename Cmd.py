@@ -26,6 +26,9 @@ class Cmd:
     {
      "tur"  : "test_unit_ready",
      "inq"  : "inquiry",
+     "wb"   : "write_buffer",
+     "sd"   : "send_diagnostic",
+     "rdr"  : "receive_diagnostic_results",
      
      "alloc": "allocation_length",
      }
@@ -57,31 +60,23 @@ class Cmd:
                           "buffer_offset"        :( 3,  24,0),
                           "parameter_list_length":( 6,  24,0),
                           }),
+     "send_diagnostic": (0x1d, 6, OUT,
+                         {
+                          "self-test_code"       :((1,7),3,0),
+                          "pf"                   :((1,4),1,0),
+                          "selftest"             :((1,2),1,0),
+                          "devoffl"              :((1,1),1,0),
+                          "unitoffl"             :((1,0),1,0),
+                          "parameter_list_length":( 3,  16,0),
+                          }),
+     "receive_diagnostic_results":
+                        (0x1c, 6, IN,
+                         {
+                          "pcv"              :((1,0),1,0),
+                          "page_code"        :( 2,   8,0),
+                          "allocation_length":( 3,  16,5),
+                          }),
     }
-    
-    # factory to create a Cmd to set time on a Rockbox device
-    @classmethod
-    def settime(Cls, year, day, hour, minute, second):
-        cmd = Cls("write_buffer", {
-                                   "mode":1,
-                                   "buffer_id":0,
-                                   "buffer_offset":0xc0000,
-                                   "parameter_list_length":12,  # Why is this 12 when there are 8 bytes of data?
-                                   })
-        cmd.dat = [0] * 8
-        Cls.fill(cmd.dat,
-                  Cmd.data_settime,
-                  {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
-        return cmd
-    
-    data_settime = \
-    {
-     "year"  :(0,16,0),
-     "day"   :(2,16,0),
-     "hour"  :(5, 8,0),
-     "minute":(6, 8,0),
-     "second":(7, 8,0),
-     }
     
     data_inquiry = \
     {
@@ -146,6 +141,17 @@ class Cmd:
         0x1e: "Well known logical unit",
         0x1f: "Unknown or no device type",
         }
+    send_diagnostic_self_test_code = \
+        {
+        0: "",
+        1: "Background short self-test",
+        2: "Background extended self-test",
+        3: "Reserved",
+        4: "Abort background self-test",
+        5: "Foreground short self-test",
+        6: "Foreground extended self-test",
+        7: "Reserved",
+        }
     
     def __init__(self, cdbname, params={}):
         # Replace a possible abbreviation.
@@ -206,4 +212,28 @@ class Cmd:
                 value >>= bitlen
                 length -= bitlen
         
+    # factory to create a Cmd to set time on a Rockbox device
+    @classmethod
+    def settime(Cls, year, day, hour, minute, second):
+        cmd = Cls("write_buffer", {
+                                   "mode":1,
+                                   "buffer_id":0,
+                                   "buffer_offset":0xc0000,
+                                   "parameter_list_length":12,  # Why is this 12 when there are 8 bytes of data?
+                                   })
+        cmd.dat = [0] * 8
+        Cls.fill(cmd.dat,
+                  Cmd.data_settime,
+                  {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
+        return cmd
+    
+    data_settime = \
+    {
+     "year"  :(0,16,0),
+     "day"   :(2,16,0),
+     "hour"  :(5, 8,0),
+     "minute":(6, 8,0),
+     "second":(7, 8,0),
+     }
+    
         
