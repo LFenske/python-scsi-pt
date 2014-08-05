@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+
+# Copyright 2014 Larry Fenske
+
+# This file is part of the Python SCSI Toolkit.
+
+# The Python SCSI Toolkit is free software: you can redistribute it
+# and/or modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, either version 3 of
+# the License, or (at your option) any later version.
+#
+# The Python SCSI Toolkit is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from ScsiPT import *
+from CDB    import *
+from Cmd    import *
+
+
+def dumpbuf(buf):
+    """
+    Print a ctypes buffer as hexadecimal bytes.
+    This code is not pretty.
+    """
+    a = 0
+    for i in buf.raw:
+        if a % 16 == 0:
+            adr = "%.4x" % a
+            hxd = ''
+            asc = ''
+        hxd += " %.2x" % ord(i)
+        asc += i if (32 <= ord(i) and ord(i) < 128) else '.'
+        if (a+1) % 16 == 0:
+            print adr, "%-49s" % hxd, asc
+        a += 1
+    if a % 16 != 0:
+        print adr, "%-49s" % hxd, asc 
+
+def getsespagelen(page, length):
+    # uses pt
+    cmd = Cmd("rdr", {"pcv":1, "page_code":page, "alloc":length})
+    #for q in cmd.cdb: print "%.2x" % q,
+    #print
+    cdb = CDB(cmd.cdb)
+    cdb.set_data_in(length)
+    pt.sendcdb(cdb)
+    return cdb.buf
+
+def getsespage(page):
+    data = getsespagelen(page, 4)
+    if page == 0x80:
+        data = getsespagelen(page, 5)
+        #dumpbuf(data)
+    length = 4 + \
+        (ord(data[2]) << 8) + \
+        (ord(data[3]) << 0)
+    return getsespagelen(page, length)
+
+if __name__ == "__main__":
+    print "version:", ScsiPT.sg.scsi_pt_version()
+    pt = ScsiPT("/dev/sg4")
+
+#    length = 4+0x12
+#    cmd = Cmd("rdr", {"pcv":1, "page_code":0, "alloc":length})
+#    print cmd.cdb
+#    cdb = CDB(cmd.cdb)
+#    cdb.set_data_in(length)
+#    pt.sendcdb(cdb)
+#    dumpbuf(cdb.buf)
+#    del cdb
+#    del cmd
+
+    pagelist = getsespage(0x00)[4:]
+    for pagenum in pagelist:
+        f = open("pages/%.02x" % ord(pagenum), "w")
+        data = getsespage(ord(pagenum))
+	f.write(data.raw)
+        print "PAGE %.02x" % ord(pagenum)
+        dumpbuf(data)
+
+    #dumpbuf(getsespage(0x00))
+
+    del pt
+
