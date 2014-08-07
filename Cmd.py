@@ -24,12 +24,14 @@ class Cmd:
     
     abbrevs = \
     {
+     # commands
      "tur"  : "test_unit_ready",
      "inq"  : "inquiry",
      "wb"   : "write_buffer",
      "sd"   : "send_diagnostic",
      "rdr"  : "receive_diagnostic_results",
      
+     # fields
      "alloc": "allocation_length",
      }
 
@@ -79,46 +81,46 @@ class Cmd:
     }
     
     data_inquiry = \
-    {
-     "peripheral qualifier"     : (( 0,7), 3),
-     "peripheral device type"   : (( 0,4), 5),
-     "rmb"                      : (( 1,0), 1),
-     "version"                  : (  2,    8),
-     "normaca"                  : (( 3,5), 1),
-     "hisup"                    : (( 3,4), 1),
-     "response data format"     : (( 3,3), 4),
-     "additional length"        : (  4,    8),
-     "sccs"                     : (( 5,7), 1),
-     "acc"                      : (( 5,6), 1),
-     "tpgs"                     : (( 5,5), 2),
-     "3pc"                      : (( 5,3), 1),
-     "protect"                  : (( 5,0), 1),
-     "encserv"                  : (( 6,6), 1),
-     "vs"                       : (( 6,5), 1),
-     "multip"                   : (( 6,4), 1),
-     "mchngr"                   : (( 6,3), 1),
-     "addr16"                   : (( 6,0), 1),
-     "wbus16"                   : (( 7,5), 1),
-     "sync"                     : (( 7,4), 1),
-     "cmdque"                   : (( 7,1), 1),
-     "vs"                       : (( 7,0), 1),
-     "t10 vendor identification": (  8,   64),
-     "product identification"   : ( 16,  128),
-     "product revision level"   : ( 32,   32),
-     "drive serial number"      : ( 36,   64),
-     "vendor unique"            : ( 44,   96),
-     "clocking"                 : ((56,3), 2),
-     "qas"                      : ((56,1), 1),
-     "ius"                      : ((56,0), 1),
-     "version descriptor 1"     : ( 58,   16),
-     "version descriptor 2"     : ( 60,   16),
-     "version descriptor 3"     : ( 62,   16),
-     "version descriptor 4"     : ( 64,   16),
-     "version descriptor 5"     : ( 66,   16),
-     "version descriptor 6"     : ( 68,   16),
-     "version descriptor 7"     : ( 70,   16),
-     "version descriptor 8"     : ( 72,   16),
-     }
+    (
+     (( 0,7), 3, "int", "qual", "peripheral qualifier"     ),
+     (( 0,4), 5, "int", "type", "peripheral device type"   ),
+     (( 1,0), 1, "int", None  , "rmb"                      ),
+     (  2,    8, "int", None  , "version"                  ),
+     (( 3,5), 1, "int", None  , "normaca"                  ),
+     (( 3,4), 1, "int", None  , "hisup"                    ),
+     (( 3,3), 4, "int", None  , "response data format"     ),
+     (  4,    8, "int", None  , "additional length"        ),
+     (( 5,7), 1, "int", None  , "sccs"                     ),
+     (( 5,6), 1, "int", None  , "acc"                      ),
+     (( 5,5), 2, "int", None  , "tpgs"                     ),
+     (( 5,3), 1, "int", None  , "3pc"                      ),
+     (( 5,0), 1, "int", None  , "protect"                  ),
+     (( 6,6), 1, "int", None  , "encserv"                  ),
+     (( 6,5), 1, "int", None  , "vs"                       ),
+     (( 6,4), 1, "int", None  , "multip"                   ),
+     (( 6,3), 1, "int", None  , "mchngr"                   ),
+     (( 6,0), 1, "int", None  , "addr16"                   ),
+     (( 7,5), 1, "int", None  , "wbus16"                   ),
+     (( 7,4), 1, "int", None  , "sync"                     ),
+     (( 7,1), 1, "int", None  , "cmdque"                   ),
+     (( 7,0), 1, "int", None  , "vs"                       ),
+     (  8,   64, "str", "vid" , "t10 vendor identification"),
+     ( 16,  128, "str", "pid" , "product identification"   ),
+     ( 32,   32, "str", "rev" , "product revision level"   ),
+     ( 36,   64, "str", "sn"  , "drive serial number"      ),
+     ( 44,   96, "str", None  , "vendor unique"            ),
+     ((56,3), 2, "int", None  , "clocking"                 ),
+     ((56,1), 1, "int", None  , "qas"                      ),
+     ((56,0), 1, "int", None  , "ius"                      ),
+     ( 58,   16, "int", None  , "version descriptor 1"     ),
+     ( 60,   16, "int", None  , "version descriptor 2"     ),
+     ( 62,   16, "int", None  , "version descriptor 3"     ),
+     ( 64,   16, "int", None  , "version descriptor 4"     ),
+     ( 66,   16, "int", None  , "version descriptor 5"     ),
+     ( 68,   16, "int", None  , "version descriptor 6"     ),
+     ( 70,   16, "int", None  , "version descriptor 7"     ),
+     ( 72,   16, "int", None  , "version descriptor 8"     ),
+     )
     peripheral_device_type = \
     {
         0x00: "Direct access block device",
@@ -185,8 +187,8 @@ class Cmd:
         for (name, value) in parms.items():
             if name not in defs:
                 raise Exception("unknown field: "+name)
-            length = defs[name][1]
-            if value >= 1<<length:
+            width = defs[name][1]
+            if value >= 1<<width:
                 raise Exception("value too large for field: "+name)
             start = defs[name][0]
             if type(start) == type(0):  # must be either number or list of 2
@@ -195,13 +197,13 @@ class Cmd:
             startbitnum = start[0]*8 + (7-start[1])  # Number bits l-to-r.
             bitnum = startbitnum + defs[name][1] - 1
             # TODO Is value inserted backwards?
-            while length > 0:
-                if bitnum % 8 == 7 and length >= 8:
+            while width > 0:
+                if bitnum % 8 == 7 and width >= 8:
                     bitlen= 8
                     cdb[bitnum//8] = value & 0xff;
                 else:
                     startofbyte = bitnum // 8 * 8  # Find first bit num in byte.
-                    firstbit = max(startofbyte, bitnum-length+1)
+                    firstbit = max(startofbyte, bitnum-width+1)
                     bitlen= bitnum-firstbit+1
                     shift = (7 - bitnum%8)
                     vmask = (1 << bitlen) - 1
@@ -210,8 +212,59 @@ class Cmd:
                     cdb[bitnum//8] |= (value & vmask) << shift
                 bitnum -= bitlen
                 value >>= bitlen
-                length -= bitlen
+                width  -= bitlen
+    
+    @staticmethod
+    def extract(data, defs, byteoffset=0):
+        """
+        Extract fields from data into a tuple based on field definitions in defs.
+        byteoffset is added to each local byte offset to get the byte offset returned for each field.
+        Return a list of lists of nickname, description, value, byte offset.
         
+        defs is a list of lists composed of start, width in bits, format, nickname, description.
+        field start is either a byte number or a tuple with byte number and bit number.
+        """
+        
+        retval = []
+        for fielddef in defs:
+            start, width, form, name, desc = fielddef
+            if form == "int":
+                if type(start) == type(0):
+                    start = (start,7)
+                ix, bitnum = start
+                val = 0
+                while (width > 0):
+                    if bitnum == 7 and width >= 8:
+                        val = (val << 8) | ord(data[ix])
+                        ix += 1
+                        width -= 8
+                    else:
+                        lastbit = bitnum+1 - width
+                        if lastbit < 0:
+                            lastbit = 0
+                        thiswidth = bitnum+1 - lastbit
+                        val = (val << thiswidth) | ((ord(data[ix]) >> lastbit) & ((1<<thiswidth)-1))
+                        bitnum = 7
+                        ix += 1
+                        width -= thiswidth
+                retval.append((val, byteoffset+start[0], name, desc))
+            elif form == "str":
+                assert(type(start) == type(0))
+                assert(width % 8 == 0)
+                retval.append((data[start:start+width/8], byteoffset+start, name, desc))
+            else:
+                # error in form
+                pass
+        return retval
+    
+    @staticmethod
+    def extractdict(data, defs, byteoffset=0):
+        return Cmd.extracttodict(Cmd.extract(data, defs, byteoffset))
+    
+    @staticmethod
+    def extracttodict(extractresults):
+        return {name: (val, bo, desc) for val, bo, name, desc in extractresults if name}
+    
     # factory to create a Cmd to set time on a Rockbox device
     @classmethod
     def settime(Cls, year, day, hour, minute, second):
