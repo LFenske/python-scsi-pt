@@ -235,6 +235,8 @@ class Cmd:
         
         defs is a list of lists composed of start, width in bits, format, nickname, description.
         field start is either a byte number or a tuple with byte number and bit number.
+        
+        Return a ListDict of Fields.
         """
         
         retval = ListDict()
