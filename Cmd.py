@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #import sys
-#sys.path.append('/home/larry/git/Jabil/debug-util')
+#sys.path.append('/home/larry/git/ih/listdict')
 
 from listdict import ListDict
 
@@ -231,13 +231,13 @@ class Cmd:
         """
         Extract fields from data into a tuple based on field definitions in defs.
         byteoffset is added to each local byte offset to get the byte offset returned for each field.
-        Return a list of Fields.
+        Return a ListDict of Fields.
         
         defs is a list of lists composed of start, width in bits, format, nickname, description.
         field start is either a byte number or a tuple with byte number and bit number.
         """
         
-        retval = []
+        retval = ListDict()
         for fielddef in defs:
             start, width, form, name, desc = fielddef
             if form == "int":
@@ -260,11 +260,11 @@ class Cmd:
                         bitnum = 7
                         ix += 1
                         width -= thiswidth
-                retval.append(Cmd.Field(val, byteoffset+start[0], name, desc))
+                retval.append(Cmd.Field(val, byteoffset+start[0], name, desc), name)
             elif form == "str":
                 assert(type(start) == type(0))
                 assert(width % 8 == 0)
-                retval.append(Cmd.Field(data[start:start+width/8], byteoffset+start, name, desc))
+                retval.append(Cmd.Field(data[start:start+width/8], byteoffset+start, name, desc), name)
             else:
                 # error in form
                 pass
