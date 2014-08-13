@@ -3,6 +3,7 @@
 	<name>python-scsi-pt</name>
 	<comment></comment>
 	<projects>
+		<project>listdict</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

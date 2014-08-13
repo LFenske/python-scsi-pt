@@ -17,6 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#import sys
+#sys.path.append('/home/larry/git/Jabil/debug-util')
+
+from listdict import ListDict
+
 class Cmd:
     """
     Manage creating objects of type CDB and filling in parameters.
@@ -214,12 +219,19 @@ class Cmd:
                 value >>= bitlen
                 width  -= bitlen
     
+    class Field:
+        def __init__(self, val, byteoffset, name, desc):
+            self.val        = val
+            self.byteoffset = byteoffset
+            self.name       = name
+            self.desc       = desc
+    
     @staticmethod
     def extract(data, defs, byteoffset=0):
         """
         Extract fields from data into a tuple based on field definitions in defs.
         byteoffset is added to each local byte offset to get the byte offset returned for each field.
-        Return a list of lists of nickname, description, value, byte offset.
+        Return a list of Fields.
         
         defs is a list of lists composed of start, width in bits, format, nickname, description.
         field start is either a byte number or a tuple with byte number and bit number.
@@ -230,6 +242,7 @@ class Cmd:
             start, width, form, name, desc = fielddef
             if form == "int":
                 if type(start) == type(0):
+                    # It's a number. Convert it into a (bytenum,bitnum) tuple.
                     start = (start,7)
                 ix, bitnum = start
                 val = 0
@@ -247,11 +260,11 @@ class Cmd:
                         bitnum = 7
                         ix += 1
                         width -= thiswidth
-                retval.append((val, byteoffset+start[0], name, desc))
+                retval.append(Cmd.Field(val, byteoffset+start[0], name, desc))
             elif form == "str":
                 assert(type(start) == type(0))
                 assert(width % 8 == 0)
-                retval.append((data[start:start+width/8], byteoffset+start, name, desc))
+                retval.append(Cmd.Field(data[start:start+width/8], byteoffset+start, name, desc))
             else:
                 # error in form
                 pass
@@ -263,7 +276,7 @@ class Cmd:
     
     @staticmethod
     def extracttodict(extractresults):
-        return {name: (val, bo, desc) for val, bo, name, desc in extractresults if name}
+        return {field.name: field for field in extractresults if field.name}
     
     # factory to create a Cmd to set time on a Rockbox device
     @classmethod
