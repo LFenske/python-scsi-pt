@@ -42,6 +42,7 @@ class CDB:
         if self.objp != None:
             ScsiPT.sg.destruct_scsi_pt_obj(self.objp)
             self.objp = None
+        super.__del__(self)
             
     def set_data_out(self, buf):
         self.buf = ctypes.create_string_buffer(str(bytearray(buf)), len(buf))

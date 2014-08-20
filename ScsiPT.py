@@ -139,6 +139,7 @@ class ScsiPT:
         retval = self.sg.scsi_pt_close_device(self.file)
         if retval < 0:
             raise Exception(retval)
+        super.__del__(self)
 
     def sendcdb(self, cdb):
         return self.sg.do_scsi_pt(cdb.objp, self.file, 20, 1)
