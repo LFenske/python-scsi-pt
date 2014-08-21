@@ -225,6 +225,9 @@ class Cmd:
             self.byteoffset = byteoffset
             self.name       = name
             self.desc       = desc
+            
+        def __str__(self):
+            return '(' + str(self.val) + ', ' + str(self.byteoffset) + ', "' + self.name + '", "' + self.desc + '")'
     
     @staticmethod
     def extract(data, defs, byteoffset=0):
@@ -272,13 +275,13 @@ class Cmd:
                 pass
         return retval
     
-    @staticmethod
-    def extractdict(data, defs, byteoffset=0):
-        return Cmd.extracttodict(Cmd.extract(data, defs, byteoffset))
-    
-    @staticmethod
-    def extracttodict(extractresults):
-        return {field.name: field for field in extractresults if field.name}
+#    @staticmethod
+#    def extractdict(data, defs, byteoffset=0):
+#        return Cmd.extracttodict(Cmd.extract(data, defs, byteoffset))
+#    
+#    @staticmethod
+#    def extracttodict(extractresults):
+#        return {field.name: field for field in extractresults if field.name}
     
     # factory to create a Cmd to set time on a Rockbox device
     @classmethod
