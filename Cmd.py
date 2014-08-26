@@ -285,6 +285,15 @@ class Cmd(object):
 #        return {field.name: field for field in extractresults if field.name}
     
     # factory to create a Cmd to set time on a Rockbox device
+    data_settime = \
+    {
+     "year"  :(0,16,0),
+     "day"   :(2,16,0),
+     "hour"  :(5, 8,0),
+     "minute":(6, 8,0),
+     "second":(7, 8,0),
+     }
+    
     @classmethod
     def settime(Cls, year, day, hour, minute, second):
         cmd = Cls("write_buffer", {
@@ -299,13 +308,27 @@ class Cmd(object):
                   {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
         return cmd
     
-    data_settime = \
+    # factory to create a Cmd to send a CLI command to a SkyTree device
+    data_clicommandout = \
     {
-     "year"  :(0,16,0),
-     "day"   :(2,16,0),
-     "hour"  :(5, 8,0),
-     "minute":(6, 8,0),
-     "second":(7, 8,0),
+     "pagecode"  :(0, 8,0),
+     "pagelength":(2,16,0),
+     "expanderid":(4, 8,0),
+     "command"   :[5, 0,0],
      }
+    @classmethod
+    def clicommandout(Cls, expanderid, command):
+        cmd = Cls("send_diagnostic", {
+                                      })
+        cmd.dat = [0] * (5+len(command))
+        Cmd.data_clicommandout["command"][1] = 8*(len(command))
+        Cls.fill(cmd.dat,
+                 Cmd.data_clicommandout,
+                 {
+                  "pagecode":0xe8,
+                  "pagelength":1+len(command),
+                  "expanderid":expanderid,
+                  "command":command,
+                  })
     
         
