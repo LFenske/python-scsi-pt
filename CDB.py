@@ -20,13 +20,14 @@
 from ctypes import * 
 from ScsiPT import *
 
-class CDB:
+class CDB(object):
     """
     Manage the data structure that holds a passthrough request.
     """
     
     def __init__(self, cdb, rs_size=24):
         # Construct CDB object for a passthrough request.
+        super(CDB, self).__init__()
         self.objp = ScsiPT.sg.construct_scsi_pt_obj()
         if self.objp == None:
             raise Exception()
@@ -42,7 +43,7 @@ class CDB:
         if self.objp != None:
             ScsiPT.sg.destruct_scsi_pt_obj(self.objp)
             self.objp = None
-        super.__del__(self)
+        #super(CDB, self).__del__()
             
     def set_data_out(self, buf):
         self.buf = ctypes.create_string_buffer(str(bytearray(buf)), len(buf))

@@ -22,7 +22,7 @@
 
 from listdict import ListDict
 
-class Cmd:
+class Cmd(object):
     """
     Manage creating objects of type CDB and filling in parameters.
     """
@@ -161,6 +161,7 @@ class Cmd:
         }
     
     def __init__(self, cdbname, params={}):
+        super(Cmd, self).__init__()
         # Replace a possible abbreviation.
         if cdbname in self.abbrevs:
             cdbname = self.abbrevs[cdbname]

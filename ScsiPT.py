@@ -19,7 +19,7 @@
 
 import ctypes
 
-class ScsiPT:
+class ScsiPT(object):
     """
     static linkages to sgutils functions
     """
@@ -131,6 +131,7 @@ class ScsiPT:
 
 
     def __init__(self, filename):
+        super(ScsiPT, self).__init__()
         self.file = self.sg.scsi_pt_open_device(filename, 0, 0)
         if self.file < 0:
             raise Exception(self.file)
@@ -139,7 +140,7 @@ class ScsiPT:
         retval = self.sg.scsi_pt_close_device(self.file)
         if retval < 0:
             raise Exception(retval)
-        super.__del__(self)
+        #super(ScsiPT, self).__del__()
 
     def sendcdb(self, cdb):
         return self.sg.do_scsi_pt(cdb.objp, self.file, 20, 1)
