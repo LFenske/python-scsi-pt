@@ -35,6 +35,7 @@ class Cmd(object):
      "wb"   : "write_buffer",
      "sd"   : "send_diagnostic",
      "rdr"  : "receive_diagnostic_results",
+     "rl"   : "report_luns",
      
      # fields
      "alloc": "allocation_length",
@@ -83,6 +84,11 @@ class Cmd(object):
                           "page_code"        :( 2,   8,0),
                           "allocation_length":( 3,  16,5),
                           }),
+     "report_luns"    : (0xa0,12, IN,
+                         {
+                          "select_report"    :(  2  , 1*8, 2),
+                          "allocation_length":(  6  , 4*8, 8),
+                          })
     }
     
     data_inquiry = \
@@ -125,6 +131,25 @@ class Cmd(object):
      ( 68,   16, "int", None  , "version descriptor 6"     ),
      ( 70,   16, "int", None  , "version descriptor 7"     ),
      ( 72,   16, "int", None  , "version descriptor 8"     ),
+     )
+    data_request_sense_fixed = \
+    (
+     (( 0,7), 1, "int", "valid", "valid"),
+     (( 0,6), 6, "int", "code", "response code"),
+     (( 2,7), 1, "int", "filemark", "filemark"),
+     (( 2,6), 1, "int", "eom", "eom"),
+     (( 2,5), 1, "int", "ili", "ili"),
+     (( 2,4), 1, "int", "sdat_ovfl", "sdat_ovfl"),
+     (( 2,3), 4, "int", "key", "sense key"),
+     (  3,  4*8, "int", "information", "information"),
+     (  7,  1*8, "int", "length", "additional sense length"),
+     (  8,  4*8, "int", "specific", "command-specific information"),
+     ( 12,  1*8, "int", "asc", "additional sense code"),
+     ( 13,  1*8, "int", "ascq", "additional sense code qualifier"),
+     ( 14,  1*8, "int", "fru", "field replaceable unit code"),
+     ((15,7), 1, "int", "sksv", "sksv"),
+     ((15,6),23, "int", "sks", "sense key specific information"),
+     ( 18,    0, "str", "more", "additional sense bytes"),
      )
     peripheral_device_type = \
     {
@@ -242,11 +267,10 @@ class Cmd(object):
     @staticmethod
     def extract(data, defs, byteoffset=0):
         """
-        Extract fields from data into a tuple based on field definitions in defs.
+        Extract fields from data into a structure based on field definitions in defs.
         byteoffset is added to each local byte offset to get the byte offset returned for each field.
-        Return a ListDict of Fields.
         
-        defs is a list of lists composed of start, width in bits, format, nickname, description.
+        defs is a list of lists comprising start, width in bits, format, nickname, description.
         field start is either a byte number or a tuple with byte number and bit number.
         
         Return a ListDict of Fields.
@@ -294,17 +318,16 @@ class Cmd(object):
 #        return {field.name: field for field in extractresults if field.name}
     
     # factory to create a Cmd to set time on a Rockbox device
-    data_settime = \
-    {
-     "year"  :(0,16,0),
-     "day"   :(2,16,0),
-     "hour"  :(5, 8,0),
-     "minute":(6, 8,0),
-     "second":(7, 8,0),
-     }
-    
     @classmethod
     def settime(Cls, year, day, hour, minute, second):
+        data_settime = \
+        {
+         "year"  :(0,16,0),
+         "day"   :(2,16,0),
+         "hour"  :(5, 8,0),
+         "minute":(6, 8,0),
+         "second":(7, 8,0),
+         }
         cmd = Cls("write_buffer", {
                                    "mode":1,
                                    "buffer_id":0,
@@ -313,8 +336,8 @@ class Cmd(object):
                                    })
         cmd.dat = [0] * 8
         Cls.fill(cmd.dat,
-                  Cmd.data_settime,
-                  {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
+                 data_settime,
+                 {"year":year, "day":day, "hour":hour, "minute":minute, "second":second})
         return cmd
     
     # factory to create a Cmd to send a CLI command to a SkyTree device

@@ -38,7 +38,7 @@ def dumpbuf(buf):
         if (a+1) % 16 == 0:
             print adr, "%-49s" % hxd, asc
         a += 1
-    if len(asc) != 0:
+    if a % 16 != 0:
         print adr, "%-49s" % hxd, asc 
 
 if __name__ == "__main__":
