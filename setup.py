@@ -1,7 +1,7 @@
 from distutils.core import setup
 setup(
     name='scsi_pt',
-    version='0.1.1',
+    version='0.1.2',
     description='Python SCSI Toolkit',
     long_description='a set of classes to create and send SCSI CDBs through libsgutils using templates to create CDBs and data out and to interpret data in',
     license='LICENSE.txt',

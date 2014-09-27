@@ -17,9 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#import sys
-#sys.path.append('/home/larry/git/ih/listdict')
-
+from CDB      import CDB
 from listdict import ListDict
 
 class Cmd(object):
@@ -341,22 +339,22 @@ class Cmd(object):
         return cmd
     
     # factory to create a Cmd to send a CLI command to a SkyTree device
-    data_clicommandout = \
-    {
-     "pagecode"  :(0, 8,0),
-     "pagelength":(2,16,0),
-     "expanderid":(4, 8,0),
-     "command"   :[5, 0,0],
-     }
     @classmethod
     def clicommandout(Cls, expanderid, command):
+        data_clicommandout = \
+        {
+         "pagecode"  :(0, 8,0),
+         "pagelength":(2,16,0),
+         "expanderid":(4, 8,0),
+         "command"   :[5, 0,0],
+         }
         cmd = Cls("send_diagnostic", {
                                       "self-test_code":0,
                                       "pf":1,
                                       "parameter_list_length": 5+len(command),
                                       })
         cmd.dat = [0] * (5+len(command))
-        Cmd.data_clicommandout["command"][1] = 8*(len(command))
+        data_clicommandout["command"][1] = 8*(len(command))
         Cls.fill(cmd.dat,
                  Cmd.data_clicommandout,
                  {
@@ -368,3 +366,19 @@ class Cmd(object):
         return cmd
     
         
+    @staticmethod
+    def inq(pt, page=None, alloc=74):
+        """
+        Create an Inquiry command, send it, and parse the results.
+        Input:
+          pt   : ScsiPT object
+          page : vital product page number or None
+          alloc: size to allocate for result
+        TODO: implement page
+        """
+        cmd = Cmd("inq", {"evpd":0, "alloc":alloc})
+        cdb = CDB(cmd.cdb)
+        cdb.set_data_in(alloc)
+        pt.sendcdb(cdb)
+        inq = Cmd.extract(cdb.buf, Cmd.data_inquiry)
+        return inq
