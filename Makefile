@@ -18,4 +18,4 @@ install:
 	pip install $(shell ls -tr dist/*)
 
 uninstall:
-	pip uninstall wcdu
+	pip uninstall scsi_pt
