@@ -137,10 +137,11 @@ class ScsiPT(object):
             raise Exception(self.file)
 
     def __del__(self):
-        retval = self.sg.scsi_pt_close_device(self.file)
-        if retval < 0:
-            raise Exception(retval)
-        #super(ScsiPT, self).__del__()
+        try:
+            self.sg.scsi_pt_close_device(self.file)
+        finally:
+            pass
+        #super(ScsiPT, self).__del__()  # doesn't exist in superclass, object
 
     def sendcdb(self, cdb):
         return self.sg.do_scsi_pt(cdb.objp, self.file, 20, 1)
